@@ -1,0 +1,48 @@
+/* v0.6 — chart overlays, two technical panes and equal-area watchlist heatmap. */
+.widget-grid .chart-options .indicator-open{font:10px var(--mono);padding:0 9px;color:var(--gold);border-color:#73603f;min-width:104px}
+#indicator-count{padding:1px 4px;margin-left:3px;border-radius:2px;background:#3c3324}
+.active-indicators{display:flex;flex:none;gap:5px;flex-wrap:wrap;padding:0 14px 7px;max-height:49px;overflow:auto;scrollbar-width:thin}
+.active-indicators[hidden]{display:none}
+.indicator-chip{border:1px solid #344257;border-left:2px solid var(--indicator-color);border-radius:3px;padding:4px 7px;background:#192434;color:#c0ccde;font:9px var(--mono);white-space:nowrap}
+.indicator-chip:hover{background:#29384c}.indicator-chip.incomplete{border-style:dashed;color:#cbb991}
+#indicator-note{max-height:32px;overflow:auto;scrollbar-width:thin}.indicator-warning{color:#e4b878!important}
+.indicator-dialog{width:min(980px,calc(100vw - 28px));max-height:88vh;padding:0;background:#111b29;border:1px solid #4b5e78;border-radius:8px;color:#dce5f1;box-shadow:0 25px 100px #000b}
+.indicator-dialog[open]{display:flex;flex-direction:column}
+.indicator-dialog::backdrop{background:#050a12cc;backdrop-filter:blur(3px)}
+.indicator-dialog-heading{display:flex;justify-content:space-between;align-items:start;gap:20px;padding:24px 25px 18px;border-bottom:1px solid var(--line);flex:none}
+.indicator-dialog-heading .eyebrow{font-size:9px;color:var(--gold);margin:0 0 9px}
+.indicator-dialog-heading h2{font-size:26px;letter-spacing:-.8px;font-weight:500;margin:0}.indicator-dialog-heading h2 span{color:var(--gold)}
+.indicator-dialog-heading p:last-child{margin:8px 0 0;color:#9aacbf;font-size:12px}
+#indicator-close{background:transparent;border:1px solid #3c4d65;color:#9cadc3;border-radius:3px;font-size:24px;width:32px;height:32px}
+.indicator-presets{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:15px 24px 9px;flex:none}
+.indicator-presets>span{font:9px var(--mono);color:#8fa4be;margin-right:6px}
+.indicator-dialog button:not(#indicator-close){border:1px solid #34475f;border-radius:3px;background:#1b2a3e;padding:8px 11px;color:#cbd7e7;font:11px var(--mono)}
+.indicator-dialog button:not(#indicator-close):hover{border-color:var(--gold);color:var(--gold)}
+.indicator-dialog button.active,.indicator-dialog button[aria-pressed="true"]{background:#3b3021!important;border-color:#947444!important;color:var(--gold)!important}
+.indicator-library-tools{display:flex;gap:15px;justify-content:space-between;padding:8px 24px 15px;border-bottom:1px solid var(--line);flex:none}
+.indicator-library-tools>div{display:flex;gap:5px}.indicator-library-tools input{width:280px;min-width:130px;padding:8px 10px;background:#0e1724;color:#dce5f1;border:1px solid #34465e;border-radius:3px;font-size:12px}
+.indicator-library-list{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:18px 24px;overflow:auto;min-height:140px;scrollbar-width:thin;align-items:start}
+.indicator-card{border:1px solid #304158;background:#162233;border-radius:5px;padding:16px;min-width:0}
+.indicator-card-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.indicator-card-heading strong{font:13px var(--mono);font-weight:500}.indicator-category{display:block;font:8px var(--mono);letter-spacing:.7px;color:#879db9;margin-top:7px}
+.indicator-card-heading input[type="checkbox"]{width:18px;height:18px;accent-color:var(--gold);cursor:pointer}
+.indicator-card p{font-size:11px;line-height:1.7;color:#9fb0c7;margin:13px 0 0}
+.indicator-fields{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}.indicator-fields label{display:flex;flex-direction:column;gap:6px;font:9px var(--mono);color:#98acc6;flex:1;min-width:65px}
+.indicator-fields input{width:100%;min-width:55px;max-width:115px;background:#0d1724;color:#e0e9f3;border:1px solid #3c506b;border-radius:3px;padding:7px 8px;font:12px var(--mono)}
+.indicator-slot-buttons{display:flex;gap:4px}.indicator-slot-buttons button{padding:6px!important;font-size:9px!important;white-space:nowrap}
+.indicator-dialog-footer{display:flex;justify-content:space-between;gap:14px;align-items:center;flex:none;border-top:1px solid var(--line);padding:14px 24px}.indicator-dialog-footer p{font-size:10px;color:#95a9c5;margin:0;line-height:1.6}#indicator-done{color:var(--gold);border-color:#92713e}.indicator-no-match{color:#9cacbf}
+.technical-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;flex:none;padding:12px 12px 8px}
+.technical-toolbar>select,.heatmap-toolbar select{background:#1c2a3c;color:#c7d5e7;border:1px solid #384c66;border-radius:3px;font:10px var(--mono);padding:6px;min-width:0;max-width:70%}
+.technical-parameters{font-size:9px;color:#a1b4cd}.technical-parameters summary{cursor:pointer;padding:5px 0}.technical-parameters[open]{flex-basis:100%;order:2;max-height:142px;overflow:auto}
+.technical-parameters .indicator-fields{margin-top:4px;padding-bottom:5px}.technical-parameters p{font-size:10px;margin:6px 0}
+.technical-values{display:flex;flex-wrap:wrap;gap:5px 14px;padding:0 13px 6px;font:9px var(--mono);flex:none;min-height:20px;color:#8197b6}.technical-values strong{color:#d7e3f3;font-weight:400}
+.technical-plot-wrap{position:relative;flex:1;min-height:80px;overflow:hidden}.technical-chart{width:100%;height:100%}
+.technical-empty{position:absolute;inset:0;display:grid;place-content:center;padding:15px;color:#91a7c4;text-align:center;font-size:11px;line-height:1.8}.technical-empty[hidden]{display:none}
+.technical-footer{flex:none;border-top:1px solid #233248;padding:8px 13px 12px;font-size:9px;color:#869dbb;max-height:108px;overflow:auto;scrollbar-width:thin}.technical-footer p{line-height:1.6;margin:0 0 5px}.technical-footer summary{cursor:pointer;color:#a7b9cf}.technical-footer details p{margin:6px 0}
+.heatmap-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:12px 13px 9px;flex:none;font:9px var(--mono);color:#9cb0ca;line-height:1.6}.heatmap-toolbar select{font-size:9px;padding:5px}
+.heatmap-tiles{flex:1;min-height:70px;display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));grid-auto-rows:minmax(95px,1fr);gap:5px;padding:0 12px 10px;overflow:auto;scrollbar-width:thin}
+.heatmap-tile{border:1px solid #ffffff12;border-radius:3px;display:flex;flex-direction:column;align-items:start;justify-content:center;text-align:left;padding:11px 12px;color:#eef4fa;min-width:0;position:relative}
+.heatmap-tile:hover{filter:brightness(1.2);border-color:#acbfd5}.heatmap-tile.selected{box-shadow:inset 0 0 0 1px var(--gold)}
+.heatmap-code{font:13px var(--mono);font-weight:600;letter-spacing:.7px}.heatmap-change{font:16px var(--mono);margin:7px 0 5px}.heatmap-price{font:9px var(--mono);color:#e2ebf5}.heatmap-tile small{font:8px var(--mono);color:#bdcddd;margin-top:7px}
+.heatmap-tile.missing .heatmap-change{font-size:8px;color:#d1bc93;letter-spacing:.3px}.heatmap-empty{grid-column:1/-1;align-self:center;text-align:center;color:#91a5bf;padding:15px;font-size:11px;line-height:1.8}
+.heatmap-footer{flex:none;border-top:1px solid #26374d;padding:12px 13px;font-size:9px;color:#879fbd;line-height:1.6}.heatmap-footer p{margin:7px 0 0}.heatmap-legend{display:flex;justify-content:space-between;font:8px var(--mono);padding-top:11px;position:relative;color:#b5c8de}.heatmap-legend:before{content:"";position:absolute;top:0;left:0;right:0;height:4px;border-radius:3px;background:linear-gradient(to right,#8b2c3e,#232f40,#1b7258)}
+@media(max-width:700px){.indicator-dialog-heading{padding:17px}.indicator-dialog-heading h2{font-size:23px}.indicator-dialog-heading p:last-child{font-size:10px}.indicator-presets,.indicator-library-tools{padding-left:15px;padding-right:15px}.indicator-library-tools{flex-wrap:wrap;gap:10px}.indicator-library-tools input{width:100%}.indicator-library-list{grid-template-columns:1fr;padding:12px 15px}.indicator-dialog-footer{padding:12px 15px}.indicator-card{padding:13px}.active-indicators{padding-left:10px;padding-right:10px}.widget-grid .chart-options{gap:5px}.widget-grid .chart-options .indicator-open{min-width:100px}#indicator-note{max-height:42px}.heatmap-tiles{grid-template-columns:repeat(auto-fit,minmax(100px,1fr))}}
