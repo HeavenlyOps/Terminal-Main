@@ -1,0 +1,15 @@
+# Cara memakai data real-time IDX Edge PRO (stock.arjum.com)
+#
+# 1. Salin file ini menjadi "arjum_key.txt" (hapus ".example" dari namanya).
+# 2. Ganti baris di bawah dengan API key kamu dari https://stock.arjum.com/dashboard
+#    (tab "API keys"). Bentuknya diawali sk_live_...
+# 3. Simpan, lalu jalankan MULAI.bat seperti biasa.
+#
+# arjum_key.txt TIDAK ikut ter-commit ke Git (sudah ada di .gitignore), jadi
+# kunci kamu tetap rahasia. Tanpa file ini aplikasi tetap jalan memakai data
+# Yahoo Finance (tertunda ~10 menit) seperti versi sebelumnya.
+#
+# Alternatif tanpa file: set environment variable ARJUM_API_KEY sebelum
+# menjalankan aplikasi.
+
+sk_live_GANTI_DENGAN_API_KEY_KAMU

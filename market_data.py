@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 
 from curl_cffi import requests
 import yfinance as yf
+import arjum
 from instruments import COMPANIES, instrument
 
 WIB = timezone(timedelta(hours=7))
@@ -84,6 +85,7 @@ def quote_from_frame(frame, ticker):
 
 
 def get_quote(ticker):
+    """Single-symbol quote via yfinance (fallback path / Arjum disabled)."""
     def load():
         frame = yf.Ticker(ticker).history(period="5d", interval="1d", auto_adjust=False, actions=False, timeout=20, raise_errors=True)
         return quote_from_frame(frame, ticker)
@@ -91,12 +93,62 @@ def get_quote(ticker):
     return {**instrument(ticker), **value}
 
 
+def _arjum_quotes(tickers):
+    """Batch real-time quotes from IDX Edge, cached together as one request.
+
+    Returns {ticker: quote_dict} for symbols the provider served. A failure
+    (quota, auth, network) raises so the caller can fall back to yfinance.
+    """
+    key = "arjum:" + ",".join(sorted(tickers))
+
+    def load():
+        quotes = arjum.get_prices(tickers)
+        if not quotes:
+            raise arjum.ArjumError("IDX Edge tidak mengembalikan harga apa pun.")
+        return {"quotes": quotes}
+
+    value = cached(key, QUOTE_TTL, load)
+    if value.get("error") and not value.get("quotes"):
+        # No live data and nothing cached to reuse -> signal fallback.
+        raise arjum.ArjumError(value["error"])
+    return value.get("quotes", {})
+
+
 def get_quotes(tickers):
     if not tickers:
         return {"quotes": [], "refresh_seconds": QUOTE_TTL}
-    with ThreadPoolExecutor(max_workers=min(2, len(tickers))) as pool:
-        quotes = list(pool.map(get_quote, tickers))
-    return {"quotes": quotes, "refresh_seconds": QUOTE_TTL, "source": "Yahoo Finance via yfinance"}
+
+    arjum_quotes = {}
+    if arjum.is_configured():
+        try:
+            arjum_quotes = _arjum_quotes(tickers)
+        except Exception as error:
+            logger.warning("IDX Edge batch gagal, memakai yfinance: %s", type(error).__name__)
+
+    # Symbols IDX Edge did not serve fall back to the delayed yfinance quote.
+    missing = [ticker for ticker in tickers if ticker not in arjum_quotes]
+    yf_quotes = {}
+    if missing:
+        with ThreadPoolExecutor(max_workers=min(2, len(missing))) as pool:
+            for ticker, quote in zip(missing, pool.map(get_quote, missing)):
+                yf_quotes[ticker] = quote
+
+    quotes = []
+    for ticker in tickers:
+        if ticker in arjum_quotes:
+            quotes.append({**instrument(ticker), **arjum_quotes[ticker]})
+        else:
+            quotes.append(yf_quotes[ticker])
+
+    used_arjum = bool(arjum_quotes)
+    used_yf = bool(missing)
+    if used_arjum and used_yf:
+        source = "IDX Edge PRO (real-time) + Yahoo Finance (fallback)"
+    elif used_arjum:
+        source = "IDX Edge PRO (stock.arjum.com), real-time"
+    else:
+        source = "Yahoo Finance via yfinance"
+    return {"quotes": quotes, "refresh_seconds": QUOTE_TTL, "source": source}
 
 
 def safe_url(value):

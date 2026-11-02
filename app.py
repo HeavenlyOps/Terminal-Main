@@ -5,16 +5,37 @@ from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 import logging
 import math
+import os
 import threading
 import time
 import webbrowser
 
 from flask import Flask, jsonify, render_template, request
 import yfinance as yf
+import arjum
 from market_data import MAX_WATCHLIST, get_news, get_quotes
 from instruments import browser_config, instrument, normalise_symbol
 
 
+def _load_arjum_key():
+    """Read the IDX Edge key from arjum_key.txt when the env var is unset.
+
+    This keeps the secret in a local, git-ignored file so MULAI.bat users do
+    not have to set an environment variable by hand. The env var still wins.
+    """
+    if os.environ.get("ARJUM_API_KEY", "").strip():
+        return
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "arjum_key.txt")
+    try:
+        with open(path, encoding="utf-8") as handle:
+            key = handle.read().strip()
+        if key and not key.startswith("#"):
+            os.environ["ARJUM_API_KEY"] = key
+    except OSError:
+        pass
+
+
+_load_arjum_key()
 app = Flask(__name__)
 WIB = timezone(timedelta(hours=7))
 CACHE_SECONDS = 60
@@ -37,6 +58,11 @@ ALLOWED_INTERVALS = {
     "1m": ("30m", "60m", "1d"),
     "3m": ("1d", "1wk"), "6m": ("1d", "1wk"), "1y": ("1d", "1wk"),
 }
+# App intervals that IDX Edge can serve directly (daily and up). Intraday
+# intervals have no IDX Edge equivalent and stay on yfinance.
+ARJUM_FRAME_BY_INTERVAL = {"1d": "daily", "1wk": "weekly", "1mo": "monthly"}
+# How many candles to request so slow SMAs (e.g. SMA 200) have enough history.
+ARJUM_HISTORY_LIMIT = 500
 cache = OrderedDict()
 data_lock = threading.Lock()
 
@@ -76,6 +102,37 @@ def make_payload(frame, symbol, range_key, fetched_at, interval=None):
         **info, "range": range_key,
         "range_label": label, "interval": interval, "interval_label": interval_label,
         "fetched_at": fetched_at, "source": "Yahoo Finance via yfinance",
+        "candles": records,
+        "summary": {
+            "last": records[-1]["close"], "open": records[0]["open"],
+            "high": max(row["high"] for row in records),
+            "low": min(row["low"] for row in records),
+            "volume": sum(row["volume"] for row in records) if info["show_volume"] else None,
+            "last_timestamp": records[-1]["timestamp"],
+        },
+    }
+
+
+def make_arjum_payload(candles, symbol, range_key, fetched_at, interval):
+    """Build the history payload from IDX Edge candle dicts (daily/weekly/...)."""
+    if not candles:
+        raise ValueError("Riwayat IDX Edge kosong.")
+    info = instrument(symbol)
+    records = []
+    for candle in candles:
+        records.append({
+            "timestamp": candle["timestamp"],
+            "chart_time": candle["chart_time"],
+            "open": candle["open"], "high": candle["high"],
+            "low": candle["low"], "close": candle["close"],
+            "volume": candle["volume"] if info["show_volume"] else None,
+        })
+    _, _, label, _ = RANGES[range_key]
+    return {
+        **info, "range": range_key,
+        "range_label": label, "interval": interval,
+        "interval_label": INTERVAL_LABELS[interval],
+        "fetched_at": fetched_at, "source": "IDX Edge PRO (stock.arjum.com)",
         "candles": records,
         "summary": {
             "last": records[-1]["close"], "open": records[0]["open"],
@@ -138,6 +195,21 @@ def history():
             cache.move_to_end(key)
             return jsonify(cached[1]), cached[2]
         period = RANGES[range_key][0]
+        arjum_frame = ARJUM_FRAME_BY_INTERVAL.get(interval)
+        # Prefer IDX Edge for daily+ candles (real-time-ish, exchange-native);
+        # intraday intervals have no equivalent and go straight to yfinance.
+        if arjum_frame and arjum.is_configured():
+            try:
+                candles = arjum.get_history(symbol, frame=arjum_frame, limit=ARJUM_HISTORY_LIMIT)
+                payload = make_arjum_payload(candles, symbol, range_key, datetime.now(WIB).isoformat(), interval)
+                cache[key] = (time.monotonic(), payload, 200)
+                cache.move_to_end(key)
+                while len(cache) > MAX_CACHE_ITEMS:
+                    cache.popitem(last=False)
+                return jsonify(payload), 200
+            except Exception as error:
+                app.logger.warning("IDX Edge history gagal untuk %s (%s), memakai yfinance: %s",
+                                   symbol, arjum_frame, type(error).__name__)
         try:
             frame = yf.Ticker(symbol).history(
                 period=period, interval=interval, auto_adjust=False,

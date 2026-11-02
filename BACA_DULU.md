@@ -6,6 +6,34 @@ enam rentang waktu, dan pembaruan otomatis. Workspace kini mendukung widget yang
 bisa digeser, diubah ukurannya, dan ditampilkan atau ditutup sesuai kebutuhan.
 Versi 0.6 menambah dua panel indikator dan heatmap saham watchlist.
 
+## Data real-time via IDX Edge PRO (opsional)
+
+Secara default aplikasi memakai Yahoo Finance (yfinance) yang **tertunda ~10 menit**.
+Kamu dapat mengaktifkan harga **real-time** untuk watchlist, kartu IHSG, dan
+candle harian/mingguan/bulanan dengan menyambungkan API
+[IDX Edge PRO](https://stock.arjum.com):
+
+1. Daftar dan ambil API key di `https://stock.arjum.com/dashboard` (tab **API keys**).
+2. Salin `arjum_key.example.txt` menjadi **`arjum_key.txt`**, lalu isi dengan
+   API key kamu (diawali `sk_live_...`). File ini **tidak** ikut ter-commit ke Git.
+   Alternatif: set environment variable `ARJUM_API_KEY`.
+3. Jalankan `MULAI.bat` seperti biasa. Aplikasi otomatis memakai IDX Edge bila
+   key tersedia, dan **kembali ke Yahoo Finance** jika key kosong, kuota habis,
+   atau sumber gagal — jadi aplikasi tidak pernah mati.
+
+Yang menjadi real-time: **harga watchlist** (1 request batch untuk semua kode),
+**kartu Market/IHSG**, dan **candle harian/mingguan/bulanan** (rentang 3M/6M/1Y).
+
+Keterbatasan: IDX Edge **belum menyediakan candle intraday** (1/5/15/30 menit).
+Untuk rentang **1D/5D/1M** yang memakai candle intraday, grafik tetap memakai
+Yahoo Finance yang tertunda. Harga terakhir (angka besar) dan watchlist tetap
+real-time dari IDX Edge selama jam bursa.
+
+Kuota free IDX Edge adalah **1.000 request/hari per akun** (reset 00:00 WIB).
+Karena watchlist diambil sekaligus dalam satu request batch dan pembaruan
+mengikuti **Auto 60 dtk**, pemakaian normal ada jauh di bawah batas itu. Data
+hanya mengalir saat jam bursa; di luar jam bursa harga terakhir tetap ditampilkan.
+
 ## Memperbarui dari versi sebelumnya
 
 1. Di jendela CMD aplikasi lama, tekan **Ctrl+C** untuk menghentikannya.
@@ -315,6 +343,7 @@ mengatasi pembatasan.
 | File | Fungsi |
 | --- | --- |
 | `app.py` | Pengambilan data, validasi kode, dan cache |
+| `arjum.py` | Klien IDX Edge PRO (harga real-time, batch, candle harian/mingguan/bulanan) |
 | `market_data.py` | Harga watchlist, feed berita, dan cache sumber |
 | `instruments.py` | Pemetaan IHSG ke ^JKSE, kode saham, nama, satuan, dan alias berita |
 | `templates/index.html` | Susunan panel dan isi halaman |

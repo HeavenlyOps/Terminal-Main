@@ -1,0 +1,8 @@
+# Lingkungan Python lokal
+.venv/
+__pycache__/
+*.pyc
+
+# API key IDX Edge PRO (stock.arjum.com) — JANGAN commit kunci asli
+arjum_key.txt
+.env
