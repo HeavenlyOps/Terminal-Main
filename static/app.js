@@ -168,6 +168,27 @@ function zoomChart(factor) {
   return Plotly.relayout($("chart"),{"xaxis.range":[right-width,right],"xaxis.autorange":false});
 }
 
+// In-chart annotations: the VOLUME caption plus a small source watermark in the
+// top-left corner so the active provider (IDX Edge real-time vs Yahoo delayed)
+// is visible on the chart itself, not only on the header badge.
+function chartAnnotations(showVolume) {
+  const annotations = [];
+  if (showVolume) annotations.push({xref:"paper",yref:"paper",x:0,y:.195,text:"VOLUME",showarrow:false,xanchor:"left",font:{size:8,color:"#7488a4"}});
+  if (current) {
+    const realtime = isRealtimeInterval(current.interval);
+    const name = sourceShortName(current.source);
+    annotations.push({
+      xref:"paper", yref:"paper", x:0, y:1, xanchor:"left", yanchor:"top",
+      text:`${realtime ? "⚡" : "⏱"} ${realtime ? "Real-time" : "Tertunda"} · ${name}`,
+      showarrow:false, align:"left",
+      font:{family:"Consolas, monospace", size:9, color: realtime ? "#52cdb0" : "#cfa75c"},
+      bgcolor:"rgba(16,23,34,.72)",
+      bordercolor: realtime ? "#2f5149" : "#4e4129", borderwidth:1, borderpad:4,
+    });
+  }
+  return annotations;
+}
+
 async function drawChart() {
   if (!current) return;
   if (!window.Plotly) throw new Error("Komponen grafik gagal dimuat. Pastikan folder static ikut diekstrak, lalu muat ulang halaman.");
@@ -206,7 +227,7 @@ async function drawChart() {
     yaxis:{domain:[showVolume ? .27 : 0,1],side:"right",showgrid:true,gridcolor:"#223044",zeroline:false,tickformat:",.2~f",nticks:5,fixedrange:false,autorange:false,range:visiblePriceRange()},
     yaxis2:{domain:[0,.17],visible:showVolume,side:"right",showgrid:false,zeroline:false,tickformat:".2s",nticks:2,fixedrange:true,rangemode:"tozero"},
     hoverlabel:{bgcolor:"#1d2c40",bordercolor:"#445671",font:{family:"Consolas, monospace",size:10}},
-    annotations:showVolume?[{xref:"paper",yref:"paper",x:0,y:.195,text:"VOLUME",showarrow:false,xanchor:"left",font:{size:8,color:"#7488a4"}}]:[],
+    annotations:chartAnnotations(showVolume),
   };
   $("chart-empty").hidden = true;
   await Plotly.react($("chart"), traces, layout, {responsive:true,scrollZoom:true,displayModeBar:false,displaylogo:false});
