@@ -36,6 +36,38 @@ function connection(text, type = "") {
   $("connection-status").className = "connection-state " + type;
 }
 
+// Which interval comes from which provider. IDX Edge serves daily+ candles
+// (real-time); intraday candles have no IDX Edge equivalent and stay on the
+// delayed Yahoo feed. Kept in one place so UI labels never drift from reality.
+const REALTIME_INTERVALS = new Set(["1d", "1wk", "1mo"]);
+function isRealtimeInterval(value) {
+  return REALTIME_INTERVALS.has(value);
+}
+function feedForInterval(value) {
+  return isRealtimeInterval(value) ? "realtime" : "delayed";
+}
+// Short, human source name derived from the backend's `source` string, so the
+// badge reflects the provider that actually answered (incl. fallback).
+function sourceShortName(source) {
+  if (typeof source === "string" && source.includes("IDX Edge")) return "IDX Edge";
+  return "Yahoo Finance";
+}
+function updateFeedBadge(data) {
+  const badge = $("feed-badge");
+  if (!badge) return;
+  if (!data) { badge.hidden = true; return; }
+  const realtime = isRealtimeInterval(data.interval);
+  const name = sourceShortName(data.source);
+  badge.hidden = false;
+  badge.dataset.feed = realtime ? "realtime" : "delayed";
+  $("feed-badge-text").textContent = realtime
+    ? `⚡ Real-time · ${name}`
+    : `⏱ Tertunda · ${name}`;
+  badge.title = realtime
+    ? `Candle ${intervalLabels[data.interval] || data.interval} real-time dari ${name} (saat jam bursa).`
+    : `Candle ${intervalLabels[data.interval] || data.interval} tertunda ±10 menit dari ${name}.`;
+}
+
 function updateSelection() {
   document.querySelectorAll("[data-symbol]").forEach(button => {
     const active = button.dataset.symbol === symbol;
@@ -48,11 +80,26 @@ function updateSelection() {
     button.setAttribute("aria-pressed", String(active));
   });
   $("symbol-input").value = symbol;
-  $("candle-interval").replaceChildren(...rangeIntervals[range].map(value=>{
+  // Group the candle options by provider so intraday (Yahoo, delayed) and
+  // daily+ (IDX Edge, real-time) are visually separated in the dropdown.
+  const makeOption = (value) => {
     const option = document.createElement("option");
     option.value = value; option.textContent = intervalLabels[value]; option.selected = value === interval;
     return option;
-  }));
+  };
+  const makeGroup = (label, values) => {
+    const group = document.createElement("optgroup");
+    group.label = label;
+    values.forEach(value => group.append(makeOption(value)));
+    return group;
+  };
+  const available = rangeIntervals[range];
+  const delayed = available.filter(value => feedForInterval(value) === "delayed");
+  const realtime = available.filter(value => feedForInterval(value) === "realtime");
+  const children = [];
+  if (delayed.length) children.push(makeGroup("Intraday · Tertunda (Yahoo)", delayed));
+  if (realtime.length) children.push(makeGroup("Harian · Real-time (IDX Edge)", realtime));
+  $("candle-interval").replaceChildren(...children);
 }
 
 function clearData() {
@@ -77,7 +124,8 @@ function clearData() {
   $("candle-rows").innerHTML = `<tr><td colspan="${info.show_volume?6:5}" class="empty-cell">Belum ada data.</td></tr>`;
   if (window.Plotly && $("chart").data) Plotly.purge($("chart"));
   chartEventsBound = false;
-  empty("Menyiapkan grafik", "Mengambil candle dari Yahoo Finance…");
+  updateFeedBadge(null);
+  empty("Menyiapkan grafik", `Mengambil candle dari ${isRealtimeInterval(interval) ? "IDX Edge" : "Yahoo Finance"}…`);
 }
 
 function empty(title, detail) {
@@ -173,6 +221,7 @@ async function drawChart() {
 
 function renderData(data) {
   window.dispatchEvent(new CustomEvent("terminal:data",{detail:data}));
+  updateFeedBadge(data);
   const summary = data.summary;
   $("last-price").textContent = number.format(summary.last);
   $("stat-open").textContent = number.format(summary.open);
@@ -185,7 +234,7 @@ function renderData(data) {
   $("interval-info").textContent = `1 candle = ${data.interval_label} · WIB · ${data.candles.length} candle`;
   const flat = data.candles.filter(row=>row.open===row.high && row.high===row.low && row.low===row.close).length;
   $("candle-note").hidden = flat < data.candles.length*.1;
-  $("candle-note").textContent = `${flat} dari ${data.candles.length} candle memiliki Open = High = Low = Close pada data Yahoo, sehingga tampak sebagai garis datar. Harga ditampilkan sesuai data sumber.`;
+  $("candle-note").textContent = `${flat} dari ${data.candles.length} candle memiliki Open = High = Low = Close pada data ${sourceShortName(data.source)}, sehingga tampak sebagai garis datar. Harga ditampilkan sesuai data sumber.`;
   $("rows-info").textContent = "8 terbaru · interval " + data.interval_label;
   $("candle-rows").replaceChildren();
   data.candles.slice(-8).reverse().forEach(candle => {
@@ -213,7 +262,8 @@ async function loadData() {
   updateSelection(); busy = true; lastAttempt = Date.now();
   $("refresh-button").disabled = true;
   connection("MENGAMBIL DATA");
-  message(current ? "Memeriksa data terbaru…" : `Mengambil ${symbol} dari Yahoo Finance…`);
+  const expectedRealtime = isRealtimeInterval(requestInterval);
+  message(current ? "Memeriksa data terbaru…" : `Mengambil ${symbol} dari ${expectedRealtime ? "IDX Edge" : "Yahoo Finance"}…`);
   try {
     const response = await fetch(`/api/history?symbol=${encodeURIComponent(requestSymbol)}&range=${requestRange}&interval=${requestInterval}`, {signal:thisRequest.signal});
     const data = await response.json();
@@ -225,7 +275,7 @@ async function loadData() {
     renderData(data);
     await drawChart();
     if (id !== requestId) return;
-    connection("TERHUBUNG · DATA TERTUNDA", "ok");
+    connection(isRealtimeInterval(data.interval) ? "TERHUBUNG · REAL-TIME" : "TERHUBUNG · DATA TERTUNDA", "ok");
     message("");
   } catch (error) {
     if (id !== requestId) return;
